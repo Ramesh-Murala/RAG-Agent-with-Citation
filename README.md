@@ -1,4 +1,4 @@
-#RAG Agent with Citation Grounding
+# RAG Agent with Citation Grounding
 
 Retrieve context, generate an answer with sources, flag low-confidence
 responses, fall back to search. Same philosophy as Project #01: don't trust
