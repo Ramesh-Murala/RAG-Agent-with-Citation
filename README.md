@@ -1,33 +1,64 @@
 # RAG Agent with Citation Validation
 
-A Python RAG prototype that checks citation provenance, verifies quoted text against retrieved documents, retries invalid responses, and abstains when no context is found.
+[![Tests and offline evaluation](https://github.com/Ramesh-Murala/RAG-Agent-with-Citation/actions/workflows/ci.yml/badge.svg)](https://github.com/Ramesh-Murala/RAG-Agent-with-Citation/actions/workflows/ci.yml)
 
-**Scope:** a small, inspectable reliability experiment. It does not establish that every generated claim is true, and has not been validated at production scale.
+A reproducible RAG reliability project that compares retrieval strategies, validates citation provenance and verbatim evidence, retries invalid model output, and abstains when no context is retrieved.
 
-## What the code checks
+The project is deliberately inspectable: the benchmark makes no API calls, the browser demo exposes every retrieved chunk and score, and the documentation separates measured behavior from production claims.
 
-| Check | Behavior |
-|---|---|
-| Retrieved chunk ID | Reject citations to chunks outside the current context |
-| Source attribution | Require the citation source to match the retrieved chunk |
-| Quoted evidence | Require a nonempty, verbatim 1–19 word quote; normalize whitespace |
-| Grounded flag | A response marked grounded must include a citation |
-| Missing context | Abstain without spending a generation call; optionally try the search adapter |
-| Invalid output | Send validation feedback to the model, with a bounded retry budget |
+## Measured results
 
-A valid quote can still accompany an incorrect answer. The test `test_valid_quote_does_not_prove_answer_entailment` deliberately demonstrates this limitation. The model's `grounded` flag is self-reported, not an independent fact check.
+The committed benchmark contains **20 synthetic policy documents, 60 labeled answerable questions, and 12 unanswerable questions**. It includes exact queries and paraphrases. Results below were produced locally from [`evaluation/results.json`](evaluation/results.json):
+
+| Retrieval strategy | Top-1 accuracy | Recall@3 | MRR@3 | Median query time* |
+|---|---:|---:|---:|---:|
+| TF-IDF | 66.7% | 80.0% | 72.5% | 0.310 ms |
+| BM25 | 70.0% | 80.0% | 74.4% | 0.048 ms |
+| Dense LSA | 65.0% | 80.0% | 71.9% | 0.537 ms |
+| Hybrid | 70.0% | 85.0% | 76.7% | 0.641 ms |
+| **Hybrid + rerank** | **70.0%** | **88.3%** | **77.2%** | 0.712 ms |
+
+\*Single-process local measurement, excluding generation. Timing varies by machine.
+
+The hybrid + rerank baseline improved Recall@3 by **8.3 percentage points** over TF-IDF on this fixture. This is a synthetic, single-relevant-document benchmark. It is useful for regression detection and design comparison; it is not a production quality estimate.
+
+`DenseLSARetriever` uses TF-IDF plus truncated SVD trained on the local corpus. It is a dense latent-semantic baseline, not a pretrained neural embedding model. The reranker is a transparent query-coverage heuristic, not a cross-encoder.
 
 ## Architecture
 
-1. `TfidfRetriever` ranks in-memory chunks by lexical similarity.
-2. `RAGCitationAgent` requests a structured answer using an Anthropic tool schema.
-3. Pydantic validates the response, followed by source and quote checks.
-4. Failed checks trigger corrective generation; exhaustion returns an ungrounded response.
-5. A low confidence score may invoke one optional search callback. New evidence goes through the same validation.
+```mermaid
+flowchart LR
+    Q[Question] --> R[Retriever]
+    R --> C[Ranked chunks]
+    C --> L[Structured LLM call]
+    L --> V{Validate}
+    V -->|valid| A[Cited answer]
+    V -->|invalid| L
+    V -->|exhausted| X[Abstain]
+```
 
-TF-IDF is a reproducible offline baseline. It can miss paraphrases without overlapping words. The store is not persistent, and this repository does not implement embedding search, reranking, or a hosted API.
+Retrieval implementations share one interface:
 
-## Run locally
+- **TF-IDF:** word and bigram lexical baseline.
+- **BM25:** length-normalized term scoring.
+- **Dense LSA:** local low-dimensional semantic representation.
+- **Hybrid:** reciprocal-rank fusion of BM25 and dense LSA.
+- **Hybrid + rerank:** fusion followed by query-coverage reranking.
+
+The agent then asks the model for a Pydantic-validated response and deterministically checks:
+
+| Check | Enforced behavior |
+|---|---|
+| Retrieved chunk ID | Reject citations outside the current retrieval context |
+| Source attribution | Require source and chunk ID to agree |
+| Quoted evidence | Require a verbatim 1–19 word excerpt from the cited chunk |
+| Grounded response | Require at least one citation |
+| Missing context | Abstain without a generation call |
+| Invalid model output | Retry with validation feedback, within a fixed budget |
+
+A real quote can accompany a false claim. The project tests and documents that boundary; citation integrity does not prove entailment.
+
+## Run the benchmark
 
 Python 3.11 or 3.12:
 
@@ -36,33 +67,41 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 pytest -q
-python -m evaluation.run --output evaluation/results.json
+python -m evaluation.run --output evaluation/results.json --summary
 ```
 
-The tests and evaluation require no credentials and make no model calls.
+The tests and retrieval evaluation require no credentials and make no model calls. CI runs them on Python 3.11 and 3.12 and uploads the full result artifact.
 
-For the live generation example, set `ANTHROPIC_API_KEY` in your environment and run `python example.py`. Live generation uses the configured model and incurs provider charges. The example's search fallback returns canned data; it is not a web search integration.
+## Inspect the browser demo
 
-## Reproducible evaluation
+```bash
+python demo_app.py
+```
 
-[`evaluation/cases.json`](evaluation/cases.json) contains six fictional policy documents, twelve answerable queries (including paraphrases), and two unanswerable queries. [`evaluation/results.json`](evaluation/results.json) records:
+Open `http://127.0.0.1:8000`. Choose a retrieval strategy, ask a question, and inspect ranked sources, chunk IDs, raw scores, and latency. The demo intentionally stops at retrieval so reviewers can evaluate evidence without an API key or model cost.
 
-- Recall@3 and MRR@3 over answerable queries.
-- Empty retrieval rate on the two unanswerable queries, not end-to-end abstention accuracy.
-- Citation checks for invented IDs, wrong sources, fabricated quotes, and missing citations.
-- A counterexample where a false answer passes the structural checks using a real quote.
+For live cited generation, set `ANTHROPIC_API_KEY` and run:
 
-The corpus is a hand-authored smoke benchmark, not a representative quality estimate. CI runs tests and publishes the evaluation JSON for Python 3.11 and 3.12.
+```bash
+python example.py
+```
 
-## Confidence and failure boundaries
+## Repository map
 
-`0.35 * retrieval_score + 0.65 * self_reported_confidence` is an uncalibrated heuristic. Scores are capped for ungrounded or uncited responses. A high score does not prove accuracy. A low score is a signal for review or fallback.
+| Path | Purpose |
+|---|---|
+| [`vectorstore.py`](vectorstore.py) | Five retrieval configurations behind one protocol |
+| [`agent.py`](agent.py) | Structured generation, citation validation, retry, confidence, and fallback |
+| [`evaluation/cases.json`](evaluation/cases.json) | Versioned documents and 72 labeled questions |
+| [`evaluation/run.py`](evaluation/run.py) | Recall, ranking, latency, and citation-integrity evaluation |
+| [`demo_app.py`](demo_app.py) | Dependency-free evidence inspection UI and JSON endpoint |
+| [`tests/`](tests) | Retrieval and failure-path regression tests |
+| [`docs/interview-walkthrough.md`](docs/interview-walkthrough.md) | Architecture and trade-off discussion guide |
 
-Provider transport errors and search-adapter exceptions propagate to the caller. The retry budget handles malformed/invalid answers, not availability failures. Callers must supply timeout and service-level error handling. Attempt records contain raw model outputs; do not persist them without a data-handling policy. Treat retrieved text as untrusted: the prompt discourages following document instructions, but this is not a prompt-injection defense guarantee.
+## Boundaries and next experiments
 
-## Next engineering milestones
-
-- Compare TF-IDF with dense and hybrid retrieval on a larger labeled corpus.
-- Evaluate claim-to-evidence entailment separately from quote integrity.
-- Calibrate abstention thresholds; report false acceptance and false rejection.
-- Measure live-model latency, token usage, and cost before making deployment claims.
+- The confidence blend is a heuristic, not a calibrated probability.
+- No-result rate on unanswerable queries is reported separately; score scales differ, so the project does not claim a universal abstention threshold.
+- Provider errors and fallback-search failures propagate to the caller.
+- Attempt records contain raw model output and need a data-retention policy before production use.
+- A useful next comparison is a pinned pretrained embedding model plus a cross-encoder, evaluated on a larger held-out domain dataset.
