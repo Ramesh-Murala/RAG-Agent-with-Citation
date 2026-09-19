@@ -1,8 +1,89 @@
 # RAG Agent with Citation Validation
 
+[![CI](https://github.com/Ramesh-Murala/RAG-Agent-with-Citation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ramesh-Murala/RAG-Agent-with-Citation/actions/workflows/ci.yml)
+
 A Python RAG prototype that checks citation provenance, verifies quoted text against retrieved documents, retries invalid responses, and abstains when no context is found.
 
 **Scope:** a small, inspectable reliability experiment. It does not establish that every generated claim is true, and has not been validated at production scale.
+
+
+## Visual proof
+
+### Architecture
+
+```mermaid
+flowchart TD
+  A["Question"] --> B["TF-IDF retrieval"]
+  B --> C{"Context found?"}
+  C -->|no| D["Abstain"]
+  C -->|yes| E["Structured generation"]
+  E --> F{"Schema + ID + source + quote checks"}
+  F -->|valid| G["Cited answer + confidence heuristic"]
+  F -->|invalid, retries remain| E
+  F -->|exhausted| D
+  G -->|low confidence, adapter configured| H["One search fallback"]
+  H --> E
+```
+
+### Request and response replay
+
+![Captured request and response replay](docs/assets/api-demo.gif)
+
+This GIF renders actual captured JSON as an animated transcript; it is not a screen recording. Python API: `agent.query("How many days of paid leave?")`. Generation uses a scripted client; retrieval and citation validation run normally. The result below selects public result fields. No HTTP endpoint is implied. Any `latency_ms` is a single local sample, not a performance benchmark.
+
+### Evaluation results
+
+| Measure | Recorded result |
+|---|---:|
+| Fictional documents | 6 |
+| Answerable / unanswerable queries | 12 / 2 |
+| Recall@3 | 0.8333 |
+| MRR@3 | 0.8333 |
+| Empty retrieval on unanswerable queries | 2/2 |
+| Citation-check cases matching expected behavior | 6/6 |
+
+[Recorded evaluation](evaluation/results.json). A tiny hand-authored fixture, not a production quality estimate. Two paraphrases are missed. One test explicitly shows a false answer passing with a real quote.
+
+### Sample request
+
+```json
+{
+  "question": "How many days of paid leave?"
+}
+```
+
+### Captured response
+
+```json
+{
+  "answer": {
+    "answer": "Employees receive 20 days of paid leave each year.",
+    "citations": [
+      {
+        "source": "handbook",
+        "chunk_id": "leave",
+        "supporting_quote": "20 days of paid leave"
+      }
+    ],
+    "self_reported_confidence": 0.9,
+    "grounded": true
+  },
+  "final_confidence": 0.814,
+  "is_low_confidence": false,
+  "used_fallback": false,
+  "attempt_count": 1
+}
+```
+
+Reproduce the capture and GIF from the repository root:
+
+```bash
+pip install -r requirements-dev.txt pillow
+python docs/capture_demo.py
+python docs/render_replay.py
+```
+
+The renderer needs DejaVu Sans Mono (on Debian/Ubuntu: `fonts-dejavu-core`). [Capture metadata](docs/assets/capture.json) records the source revision. [Request JSON](docs/assets/request.json) and [response JSON](docs/assets/response.json) are available separately.
 
 ## What the code checks
 
