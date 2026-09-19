@@ -12,21 +12,24 @@ retry. Here the schema is the citation set, and "validation" includes a
 grounding check -- every citation must point at a chunk that was actually
 retrieved, or the attempt is rejected and retried.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
 
 import anthropic
 from pydantic import BaseModel, Field, ValidationError
 
-from vectorstore import Chunk, RetrievedChunk, TfidfRetriever
+from vectorstore import Chunk, RetrievedChunk, Retriever, TfidfRetriever
 
 logger = logging.getLogger("rag_citation_agent")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
 
@@ -35,24 +38,38 @@ DEFAULT_MODEL = "claude-sonnet-4-6"
 # Schema
 # --------------------------------------------------------------------------
 
+
 class Citation(BaseModel):
-    source: str = Field(..., description="The `source` label of the chunk this citation comes from")
-    chunk_id: str = Field(..., description="The `chunk_id` of the chunk this citation comes from")
+    source: str = Field(
+        ..., description="The `source` label of the chunk this citation comes from"
+    )
+    chunk_id: str = Field(
+        ..., description="The `chunk_id` of the chunk this citation comes from"
+    )
     supporting_quote: str = Field(
-        ..., description="A short (<20 word) excerpt from the chunk that directly supports the claim"
+        ...,
+        description="A short (<20 word) excerpt from the chunk that directly supports the claim",
     )
 
 
 class RAGAnswer(BaseModel):
-    answer: str = Field(..., description="The answer to the user's question, grounded only in the provided context")
-    citations: List[Citation] = Field(
-        default_factory=list, description="Citations backing each factual claim in the answer"
+    answer: str = Field(
+        ...,
+        description="The answer to the user's question, grounded only in the provided context",
+    )
+    citations: list[Citation] = Field(
+        default_factory=list,
+        description="Citations backing each factual claim in the answer",
     )
     self_reported_confidence: float = Field(
-        ..., ge=0, le=1, description="Model's own confidence that the answer is fully supported by the context"
+        ...,
+        ge=0,
+        le=1,
+        description="Model's own confidence that the answer is fully supported by the context",
     )
     grounded: bool = Field(
-        ..., description="False if the context did not contain enough information to answer confidently"
+        ...,
+        description="False if the context did not contain enough information to answer confidently",
     )
 
 
@@ -60,19 +77,19 @@ class RAGAnswer(BaseModel):
 class AttemptRecord:
     attempt: int
     raw_output: str
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
 class RAGResult:
     query: str
     answer: RAGAnswer
-    retrieved_chunks: List[RetrievedChunk]
+    retrieved_chunks: list[RetrievedChunk]
     retrieval_confidence: float
     final_confidence: float
     is_low_confidence: bool
     used_fallback: bool
-    attempts: List[AttemptRecord] = field(default_factory=list)
+    attempts: list[AttemptRecord] = field(default_factory=list)
 
 
 class GroundingError(Exception):
@@ -83,20 +100,26 @@ class GroundingError(Exception):
 # Agent
 # --------------------------------------------------------------------------
 
+
 class RAGCitationAgent:
     def __init__(
         self,
-        retriever: Optional[TfidfRetriever] = None,
+        retriever: Retriever | None = None,
         model: str = DEFAULT_MODEL,
         top_k: int = 4,
         low_confidence_threshold: float = 0.45,
         max_retries: int = 2,
-        fallback_search_fn: Optional[Callable[[str], List[Chunk]]] = None,
-        client: Optional[anthropic.Anthropic] = None,
+        fallback_search_fn: Callable[[str], list[Chunk]] | None = None,
+        client: anthropic.Anthropic | None = None,
     ):
         if top_k < 1 or max_retries < 0 or max_retries > 10:
-            raise ValueError("top_k must be positive and max_retries must be between 0 and 10")
-        if not math.isfinite(low_confidence_threshold) or not 0 <= low_confidence_threshold <= 1:
+            raise ValueError(
+                "top_k must be positive and max_retries must be between 0 and 10"
+            )
+        if (
+            not math.isfinite(low_confidence_threshold)
+            or not 0 <= low_confidence_threshold <= 1
+        ):
             raise ValueError("low_confidence_threshold must be between 0 and 1")
         self.retriever = retriever or TfidfRetriever()
         self.model = model
@@ -106,7 +129,7 @@ class RAGCitationAgent:
         self.fallback_search_fn = fallback_search_fn
         self.client = client or anthropic.Anthropic()
 
-    def add_documents(self, chunks: List[Chunk]) -> None:
+    def add_documents(self, chunks: list[Chunk]) -> None:
         self.retriever.add_documents(chunks)
 
     # ---- public API ----------------------------------------------------
@@ -123,22 +146,36 @@ class RAGCitationAgent:
         used_fallback = False
 
         if is_low and self.fallback_search_fn is not None:
-            logger.info("Low confidence (%.2f) for %r -- invoking fallback search", final_confidence, question)
+            logger.info(
+                "Low confidence (%.2f) for %r -- invoking fallback search",
+                final_confidence,
+                question,
+            )
             fallback_chunks = self.fallback_search_fn(question)
             if fallback_chunks:
                 used_fallback = True
-                combined = retrieved + [RetrievedChunk(chunk=c, score=0.0) for c in fallback_chunks]
-                answer, retry_attempts = self._generate_grounded_answer(question, combined)
+                combined = retrieved + [
+                    RetrievedChunk(chunk=c, score=0.0) for c in fallback_chunks
+                ]
+                answer, retry_attempts = self._generate_grounded_answer(
+                    question, combined
+                )
                 attempts.extend(retry_attempts)
                 retrieved = combined
                 # retrieval_confidence intentionally NOT recomputed from fallback:
                 # it's a different source type (e.g. live web), scored 0.0 by
                 # convention so it never inflates the TF-IDF-based signal.
-                final_confidence = self._combine_confidence(retrieval_confidence, answer)
+                final_confidence = self._combine_confidence(
+                    retrieval_confidence, answer
+                )
                 is_low = self._is_low_confidence(final_confidence, answer, retrieved)
 
         if is_low:
-            logger.warning("Returning low-confidence answer for %r (confidence=%.2f)", question, final_confidence)
+            logger.warning(
+                "Returning low-confidence answer for %r (confidence=%.2f)",
+                question,
+                final_confidence,
+            )
 
         return RAGResult(
             query=question,
@@ -154,8 +191,8 @@ class RAGCitationAgent:
     # ---- generation + validation retry loop -----------------------------
 
     def _generate_grounded_answer(
-        self, question: str, chunks: List[RetrievedChunk]
-    ) -> tuple[RAGAnswer, List[AttemptRecord]]:
+        self, question: str, chunks: list[RetrievedChunk]
+    ) -> tuple[RAGAnswer, list[AttemptRecord]]:
         evidence = {rc.chunk.id: rc.chunk for rc in chunks}
         if len(evidence) != len(chunks):
             raise ValueError("Retrieved chunk IDs must be unique")
@@ -163,10 +200,12 @@ class RAGCitationAgent:
         if not chunks:
             return RAGAnswer(
                 answer="No relevant context was retrieved. I cannot answer from the available evidence.",
-                citations=[], self_reported_confidence=0.0, grounded=False,
+                citations=[],
+                self_reported_confidence=0.0,
+                grounded=False,
             ), []
         context_block = self._format_context(chunks)
-        attempts: List[AttemptRecord] = []
+        attempts: list[AttemptRecord] = []
         error_feedback = ""
 
         for attempt_num in range(1, self.max_retries + 2):  # first try + retries
@@ -180,7 +219,9 @@ class RAGCitationAgent:
             except (json.JSONDecodeError, ValidationError, GroundingError) as exc:
                 error_text = str(exc)
                 logger.info("Attempt %d failed validation: %s", attempt_num, error_text)
-                attempts.append(AttemptRecord(attempt=attempt_num, raw_output=raw, error=error_text))
+                attempts.append(
+                    AttemptRecord(attempt=attempt_num, raw_output=raw, error=error_text)
+                )
                 error_feedback = (
                     f"Your previous response failed validation with this error:\n{error_text}\n"
                     "Fix it and respond again with ONLY a valid tool call matching the schema. "
@@ -189,7 +230,11 @@ class RAGCitationAgent:
 
         # Exhausted retries: return a safe, explicitly ungrounded fallback
         # rather than raising, so a flaky final attempt doesn't crash the caller.
-        logger.error("All %d attempts failed validation for query %r", self.max_retries + 1, question)
+        logger.error(
+            "All %d attempts failed validation for query %r",
+            self.max_retries + 1,
+            question,
+        )
         fallback = RAGAnswer(
             answer="I wasn't able to produce a reliably grounded answer from the available context.",
             citations=[],
@@ -208,12 +253,18 @@ class RAGCitationAgent:
             if chunk is None:
                 raise GroundingError(f"Unknown retrieved chunk_id: {citation.chunk_id}")
             if citation.source != chunk.source:
-                raise GroundingError(f"Source does not match chunk_id: {citation.chunk_id}")
+                raise GroundingError(
+                    f"Source does not match chunk_id: {citation.chunk_id}"
+                )
             quote = " ".join(citation.supporting_quote.split())
             if not quote or len(quote.split()) >= 20:
-                raise GroundingError("supporting_quote must contain between 1 and 19 words")
+                raise GroundingError(
+                    "supporting_quote must contain between 1 and 19 words"
+                )
             if quote not in " ".join(chunk.text.split()):
-                raise GroundingError(f"Quote is not present in chunk_id: {citation.chunk_id}")
+                raise GroundingError(
+                    f"Quote is not present in chunk_id: {citation.chunk_id}"
+                )
 
     # ---- LLM call --------------------------------------------------------
 
@@ -248,11 +299,15 @@ class RAGCitationAgent:
         for block in response.content:
             if block.type == "tool_use":
                 return json.dumps(block.input)
-        raise RuntimeError("Model did not return a tool_use block despite forced tool_choice")
+        raise RuntimeError(
+            "Model did not return a tool_use block despite forced tool_choice"
+        )
 
     # ---- confidence heuristic --------------------------------------------
 
-    def _combine_confidence(self, retrieval_confidence: float, answer: RAGAnswer) -> float:
+    def _combine_confidence(
+        self, retrieval_confidence: float, answer: RAGAnswer
+    ) -> float:
         """
         Blend the bag-of-words retrieval score with the model's self-reported
         confidence. This is a heuristic, not a calibrated probability -- it's
@@ -268,7 +323,9 @@ class RAGCitationAgent:
             blended = min(blended, 0.35)
         return round(blended, 3)
 
-    def _is_low_confidence(self, final_confidence: float, answer: RAGAnswer, chunks: List[RetrievedChunk]) -> bool:
+    def _is_low_confidence(
+        self, final_confidence: float, answer: RAGAnswer, chunks: list[RetrievedChunk]
+    ) -> bool:
         return (
             final_confidence < self.low_confidence_threshold
             or not answer.grounded
@@ -276,7 +333,7 @@ class RAGCitationAgent:
         )
 
     @staticmethod
-    def _format_context(chunks: List[RetrievedChunk]) -> str:
+    def _format_context(chunks: list[RetrievedChunk]) -> str:
         if not chunks:
             return "(no context retrieved)"
         lines = []
