@@ -1,0 +1,18 @@
+{
+  "answer": {
+    "answer": "Employees receive 20 days of paid leave each year.",
+    "citations": [
+      {
+        "source": "handbook",
+        "chunk_id": "leave",
+        "supporting_quote": "20 days of paid leave"
+      }
+    ],
+    "self_reported_confidence": 0.9,
+    "grounded": true
+  },
+  "final_confidence": 0.814,
+  "is_low_confidence": false,
+  "used_fallback": false,
+  "attempt_count": 1
+}

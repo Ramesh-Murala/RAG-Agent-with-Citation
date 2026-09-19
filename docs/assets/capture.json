@@ -1,0 +1,7 @@
+{
+  "title": "RAG-Agent-with-Citation",
+  "mode": "Captured output replay | scripted provider; real validation",
+  "request_label": "Python: agent.query(question)",
+  "response_label": "Python result (selected fields)",
+  "source_commit": "4a237ab1d5ce0fadd2aac106599c4813ded224d9"
+}
