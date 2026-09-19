@@ -1,175 +1,267 @@
 {
-  "mode": "offline_fixture_no_llm",
-  "corpus_documents": 6,
-  "answerable_queries": 12,
-  "unanswerable_queries": 2,
-  "recall_at_3": 0.8333,
-  "mrr_at_3": 0.8333,
-  "empty_retrieval_rate_on_unanswerable": 1.0,
-  "queries": [
-    {
-      "query": "How many days of paid leave?",
-      "relevant": [
-        "leave"
+  "mode": "offline_synthetic_no_llm",
+  "dataset": {
+    "name": "fictional-company-policy-retrieval-v1",
+    "purpose": "Deterministic offline retrieval comparison",
+    "license": "CC0-style synthetic content generated for this repository"
+  },
+  "corpus_documents": 20,
+  "answerable_queries": 60,
+  "unanswerable_queries": 12,
+  "retrievers": {
+    "tfidf": {
+      "index_ms": 1.875,
+      "median_query_ms": 0.31,
+      "top_1_accuracy": 0.6667,
+      "recall_at_3": 0.8,
+      "mrr_at_3": 0.725,
+      "no_result_rate_unanswerable": 0.8333,
+      "by_query_kind": {
+        "exact": {
+          "queries": 21,
+          "top_1_accuracy": 0.8571,
+          "recall_at_3": 0.9048
+        },
+        "paraphrase": {
+          "queries": 39,
+          "top_1_accuracy": 0.5641,
+          "recall_at_3": 0.7436
+        }
+      },
+      "top_1_miss_query_ids": [
+        "password-2",
+        "expense-1",
+        "expense-3",
+        "remote-2",
+        "incident-2",
+        "incident-3",
+        "retention-3",
+        "travel-1",
+        "travel-2",
+        "parental-3",
+        "oncall-1",
+        "access-2",
+        "deploy-2",
+        "vendor-1",
+        "vendor-3",
+        "training-1",
+        "api-3",
+        "support-3",
+        "deletion-2",
+        "probation-3"
       ],
-      "retrieved": [
-        "leave",
-        "retention",
-        "expense"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
+      "unanswerable_query_ids_with_results": [
+        "none-10",
+        "none-12"
+      ]
     },
-    {
-      "query": "When does unused leave expire?",
-      "relevant": [
-        "leave"
+    "bm25": {
+      "index_ms": 0.214,
+      "median_query_ms": 0.048,
+      "top_1_accuracy": 0.7,
+      "recall_at_3": 0.8,
+      "mrr_at_3": 0.7444,
+      "no_result_rate_unanswerable": 0.0833,
+      "by_query_kind": {
+        "exact": {
+          "queries": 21,
+          "top_1_accuracy": 0.8095,
+          "recall_at_3": 0.9048
+        },
+        "paraphrase": {
+          "queries": 39,
+          "top_1_accuracy": 0.641,
+          "recall_at_3": 0.7436
+        }
+      },
+      "top_1_miss_query_ids": [
+        "password-3",
+        "expense-1",
+        "expense-2",
+        "expense-3",
+        "remote-2",
+        "incident-2",
+        "retention-3",
+        "travel-1",
+        "travel-2",
+        "oncall-1",
+        "access-2",
+        "deploy-2",
+        "deploy-3",
+        "vendor-1",
+        "training-1",
+        "api-3",
+        "deletion-2",
+        "probation-3"
       ],
-      "retrieved": [
-        "leave",
-        "retention"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
+      "unanswerable_query_ids_with_results": [
+        "none-1",
+        "none-2",
+        "none-3",
+        "none-4",
+        "none-5",
+        "none-6",
+        "none-7",
+        "none-9",
+        "none-10",
+        "none-11",
+        "none-12"
+      ]
     },
-    {
-      "query": "How do I reset my password?",
-      "relevant": [
-        "password"
+    "dense_lsa": {
+      "index_ms": 3.799,
+      "median_query_ms": 0.537,
+      "top_1_accuracy": 0.65,
+      "recall_at_3": 0.8,
+      "mrr_at_3": 0.7194,
+      "no_result_rate_unanswerable": 0.8333,
+      "by_query_kind": {
+        "exact": {
+          "queries": 21,
+          "top_1_accuracy": 0.8095,
+          "recall_at_3": 0.9048
+        },
+        "paraphrase": {
+          "queries": 39,
+          "top_1_accuracy": 0.5641,
+          "recall_at_3": 0.7436
+        }
+      },
+      "top_1_miss_query_ids": [
+        "password-2",
+        "expense-1",
+        "expense-3",
+        "remote-2",
+        "remote-3",
+        "incident-3",
+        "retention-3",
+        "travel-1",
+        "travel-2",
+        "parental-3",
+        "oncall-1",
+        "access-2",
+        "deploy-2",
+        "deploy-3",
+        "vendor-1",
+        "vendor-3",
+        "training-1",
+        "api-3",
+        "support-3",
+        "deletion-2",
+        "probation-3"
       ],
-      "retrieved": [
-        "password"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
+      "unanswerable_query_ids_with_results": [
+        "none-10",
+        "none-12"
+      ]
     },
-    {
-      "query": "Is multi-factor authentication required?",
-      "relevant": [
-        "password"
+    "hybrid": {
+      "index_ms": 3.039,
+      "median_query_ms": 0.641,
+      "top_1_accuracy": 0.7,
+      "recall_at_3": 0.85,
+      "mrr_at_3": 0.7667,
+      "no_result_rate_unanswerable": 0.0833,
+      "by_query_kind": {
+        "exact": {
+          "queries": 21,
+          "top_1_accuracy": 0.8095,
+          "recall_at_3": 0.9048
+        },
+        "paraphrase": {
+          "queries": 39,
+          "top_1_accuracy": 0.641,
+          "recall_at_3": 0.8205
+        }
+      },
+      "top_1_miss_query_ids": [
+        "password-2",
+        "expense-1",
+        "expense-3",
+        "remote-2",
+        "incident-2",
+        "retention-3",
+        "travel-1",
+        "travel-2",
+        "oncall-1",
+        "access-2",
+        "deploy-2",
+        "deploy-3",
+        "vendor-1",
+        "vendor-3",
+        "training-1",
+        "api-3",
+        "deletion-2",
+        "probation-3"
       ],
-      "retrieved": [
-        "password"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
+      "unanswerable_query_ids_with_results": [
+        "none-1",
+        "none-2",
+        "none-3",
+        "none-4",
+        "none-5",
+        "none-6",
+        "none-7",
+        "none-9",
+        "none-10",
+        "none-11",
+        "none-12"
+      ]
     },
-    {
-      "query": "When should I submit expense receipts?",
-      "relevant": [
-        "expense"
+    "hybrid_rerank": {
+      "index_ms": 3.152,
+      "median_query_ms": 0.712,
+      "top_1_accuracy": 0.7,
+      "recall_at_3": 0.8833,
+      "mrr_at_3": 0.7722,
+      "no_result_rate_unanswerable": 0.0833,
+      "by_query_kind": {
+        "exact": {
+          "queries": 21,
+          "top_1_accuracy": 0.8095,
+          "recall_at_3": 0.9048
+        },
+        "paraphrase": {
+          "queries": 39,
+          "top_1_accuracy": 0.641,
+          "recall_at_3": 0.8718
+        }
+      },
+      "top_1_miss_query_ids": [
+        "password-2",
+        "expense-1",
+        "expense-2",
+        "expense-3",
+        "remote-2",
+        "incident-2",
+        "retention-3",
+        "travel-1",
+        "travel-2",
+        "oncall-1",
+        "access-2",
+        "deploy-2",
+        "deploy-3",
+        "vendor-1",
+        "training-1",
+        "api-3",
+        "deletion-2",
+        "probation-3"
       ],
-      "retrieved": [
-        "expense"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
-    },
-    {
-      "query": "Who approves reimbursement?",
-      "relevant": [
-        "expense"
-      ],
-      "retrieved": [
-        "expense"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
-    },
-    {
-      "query": "Which days permit remote work?",
-      "relevant": [
-        "remote"
-      ],
-      "retrieved": [
-        "remote",
-        "retention",
-        "expense"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
-    },
-    {
-      "query": "Where do I report security incidents?",
-      "relevant": [
-        "incident"
-      ],
-      "retrieved": [
-        "incident"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
-    },
-    {
-      "query": "How long are application logs retained?",
-      "relevant": [
-        "retention"
-      ],
-      "retrieved": [
-        "retention",
-        "incident"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
-    },
-    {
-      "query": "When do customer exports expire?",
-      "relevant": [
-        "retention"
-      ],
-      "retrieved": [
-        "retention"
-      ],
-      "recall_at_3": 1.0,
-      "reciprocal_rank": 1.0,
-      "empty_retrieval": false
-    },
-    {
-      "query": "Can I telecommute?",
-      "relevant": [
-        "remote"
-      ],
-      "retrieved": [],
-      "recall_at_3": 0.0,
-      "reciprocal_rank": 0,
-      "empty_retrieval": true
-    },
-    {
-      "query": "Who authorizes repayment?",
-      "relevant": [
-        "expense"
-      ],
-      "retrieved": [],
-      "recall_at_3": 0.0,
-      "reciprocal_rank": 0,
-      "empty_retrieval": true
-    },
-    {
-      "query": "spaceship propulsion",
-      "relevant": [],
-      "retrieved": [],
-      "recall_at_3": null,
-      "reciprocal_rank": 0,
-      "empty_retrieval": true
-    },
-    {
-      "query": "What is the employee salary policy?",
-      "relevant": [],
-      "retrieved": [],
-      "recall_at_3": null,
-      "reciprocal_rank": 0,
-      "empty_retrieval": true
+      "unanswerable_query_ids_with_results": [
+        "none-1",
+        "none-2",
+        "none-3",
+        "none-4",
+        "none-5",
+        "none-6",
+        "none-7",
+        "none-9",
+        "none-10",
+        "none-11",
+        "none-12"
+      ]
     }
-  ],
+  },
   "citation_checks": [
     {
       "case": "valid_evidence",
@@ -202,5 +294,11 @@
       "expected": true
     }
   ],
-  "limitation": "Hand-authored tiny corpus; no generation-quality, scale, cost, or semantic-entailment claim. A real quote can accompany a false answer."
+  "limitations": [
+    "Synthetic single-relevant-document corpus; results do not estimate production quality.",
+    "Dense LSA is local truncated SVD, not a pretrained neural embedding model.",
+    "No-result rate is not calibrated abstention accuracy; score scales differ by retriever.",
+    "Citation checks verify provenance and verbatim quotes, not claim-to-evidence entailment.",
+    "Latency is a local single-process measurement and excludes model generation."
+  ]
 }

@@ -13,8 +13,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -r requirements-dev.txt
+      - run: ruff check .
       - run: pytest -q
-      - run: python -m evaluation.run --output evaluation/results.json
+      - run: python -m evaluation.run --output evaluation/results.json --summary
       - uses: actions/upload-artifact@v4
         with:
           name: offline-evaluation-${{ matrix.python-version }}

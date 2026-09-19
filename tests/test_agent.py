@@ -5,14 +5,26 @@ import pytest
 from agent import GroundingError, RAGAnswer, RAGCitationAgent
 from vectorstore import Chunk, TfidfRetriever, simple_chunk_text
 
-
-CHUNK = Chunk(id="pto", source="handbook", text="Employees receive 20 days of paid leave each year.")
+CHUNK = Chunk(
+    id="pto",
+    source="handbook",
+    text="Employees receive 20 days of paid leave each year.",
+)
 
 
 def answer(**changes):
-    data = dict(answer="Employees receive 20 days of paid leave.", grounded=True,
-                self_reported_confidence=0.9,
-                citations=[dict(chunk_id="pto", source="handbook", supporting_quote="20 days of paid leave")])
+    data = {
+        "answer": "Employees receive 20 days of paid leave.",
+        "grounded": True,
+        "self_reported_confidence": 0.9,
+        "citations": [
+            {
+                "chunk_id": "pto",
+                "source": "handbook",
+                "supporting_quote": "20 days of paid leave",
+            }
+        ],
+    }
     data.update(changes)
     return data
 
@@ -25,7 +37,9 @@ class FakeClient:
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=next(self.outputs))])
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="tool_use", input=next(self.outputs))]
+        )
 
 
 def make_agent(outputs, **kwargs):
@@ -35,16 +49,21 @@ def make_agent(outputs, **kwargs):
     return RAGCitationAgent(retriever=retriever, client=client, **kwargs), client
 
 
-@pytest.mark.parametrize("citation", [
-    dict(chunk_id="invented", source="handbook", supporting_quote="20 days"),
-    dict(chunk_id="pto", source="invented", supporting_quote="20 days"),
-    dict(chunk_id="pto", source="handbook", supporting_quote="90 days"),
-    dict(chunk_id="pto", source="handbook", supporting_quote="   "),
-])
+@pytest.mark.parametrize(
+    "citation",
+    [
+        {"chunk_id": "invented", "source": "handbook", "supporting_quote": "20 days"},
+        {"chunk_id": "pto", "source": "invented", "supporting_quote": "20 days"},
+        {"chunk_id": "pto", "source": "handbook", "supporting_quote": "90 days"},
+        {"chunk_id": "pto", "source": "handbook", "supporting_quote": "   "},
+    ],
+)
 def test_rejects_invalid_evidence(citation):
     agent, _ = make_agent([])
     with pytest.raises(GroundingError):
-        agent._check_grounding(RAGAnswer(**answer(citations=[citation])), {CHUNK.id: CHUNK})
+        agent._check_grounding(
+            RAGAnswer(**answer(citations=[citation])), {CHUNK.id: CHUNK}
+        )
 
 
 def test_retry_uses_validation_feedback():
@@ -52,7 +71,10 @@ def test_retry_uses_validation_feedback():
     result = agent.query("paid leave")
     assert result.answer.grounded
     assert len(result.attempts) == 2
-    assert "must include at least one citation" in client.calls[1]["messages"][0]["content"]
+    assert (
+        "must include at least one citation"
+        in client.calls[1]["messages"][0]["content"]
+    )
 
 
 def test_exhaustion_abstains():
@@ -73,10 +95,20 @@ def test_missing_context_skips_generation():
 
 def test_fallback_runs_once_and_validates_new_sources():
     calls = []
+
     def search(query):
         calls.append(query)
         return [Chunk(id="space", source="search", text="Spaceships require fuel.")]
-    data = answer(citations=[dict(chunk_id="space", source="search", supporting_quote="Spaceships require fuel.")])
+
+    data = answer(
+        citations=[
+            {
+                "chunk_id": "space",
+                "source": "search",
+                "supporting_quote": "Spaceships require fuel.",
+            }
+        ]
+    )
     agent, client = make_agent([data], fallback_search_fn=search)
     result = agent.query("spaceships")
     assert result.used_fallback and result.answer.grounded
@@ -93,11 +125,22 @@ def test_valid_quote_does_not_prove_answer_entailment():
 
 def test_whitespace_normalization():
     agent, _ = make_agent([])
-    data = answer(citations=[dict(chunk_id="pto", source="handbook", supporting_quote="20  days\nof paid leave")])
+    data = answer(
+        citations=[
+            {
+                "chunk_id": "pto",
+                "source": "handbook",
+                "supporting_quote": "20  days\nof paid leave",
+            }
+        ]
+    )
     agent._check_grounding(RAGAnswer(**data), {CHUNK.id: CHUNK})
 
 
-@pytest.mark.parametrize("kwargs", [{"top_k": 0}, {"max_retries": -1}, {"low_confidence_threshold": float("nan")}])
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"top_k": 0}, {"max_retries": -1}, {"low_confidence_threshold": float("nan")}],
+)
 def test_invalid_configuration(kwargs):
     with pytest.raises(ValueError):
         make_agent([], **kwargs)
