@@ -1,10 +1,14 @@
 # RAG Agent with Citation Validation
 
 [![CI](https://github.com/Ramesh-Murala/RAG-Agent-with-Citation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ramesh-Murala/RAG-Agent-with-Citation/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](pyproject.toml)
 
-A Python RAG prototype that checks citation provenance, verifies quoted text against retrieved documents, retries invalid responses, and abstains when no context is found.
+A Python RAG agent that rejects citations the retrieved context does not support, verifies quoted evidence word for word, retries invalid responses, and abstains when nothing relevant is retrieved.
 
-**Scope:** a small, inspectable reliability experiment. It does not establish that every generated claim is true, and has not been validated at production scale.
+**Measured on the included fixture:** Recall@3 0.83, MRR@3 0.83, 2/2 empty retrievals on unanswerable queries, 6/6 citation-integrity cases behaving as specified. Reproducible with a single command, no API key and no model calls.
+
+**Scope:** a small, inspectable reliability experiment on a hand-authored corpus. It does not establish that every generated claim is true, and has not been validated at production scale; the limits are documented under Confidence and failure boundaries.
 
 
 ## Visual proof
