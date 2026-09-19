@@ -1,124 +1,68 @@
-# RAG Agent with Citation Grounding
+# RAG Agent with Citation Validation
 
-Retrieve context, generate an answer with sources, flag low-confidence
-responses, fall back to search. Same philosophy as Project #01: don't trust
-the model to freeform an answer -- force it through a validated schema, and
-feed validation errors back in for a corrective retry. Here the schema is
-the citation set, and "validation" includes a **grounding check**: every
-citation must point at a chunk that was actually retrieved, or the attempt
-is rejected and retried.
+A Python RAG prototype that checks citation provenance, verifies quoted text against retrieved documents, retries invalid responses, and abstains when no context is found.
 
-## Why this prevents hallucination at scale
+**Scope:** a small, inspectable reliability experiment. It does not establish that every generated claim is true, and has not been validated at production scale.
 
-Two independent failure modes are handled separately:
+## What the code checks
 
-1. **The model invents a fact not in the context.** Caught by asking the
-   model to self-report `grounded: false` when the context is insufficient,
-   combined with a retrieval-based confidence signal it can't fake.
-2. **The model invents a citation** (cites a source that doesn't exist, or
-   attributes a real claim to the wrong chunk). Caught structurally: every
-   `chunk_id` in the response is checked against the set of chunk_ids that
-   were actually retrieved. A hallucinated citation raises a
-   `GroundingError`, which feeds the exact error text back to the model for
-   a retry -- the same "specific corrective signal" pattern from Project #01.
+| Check | Behavior |
+|---|---|
+| Retrieved chunk ID | Reject citations to chunks outside the current context |
+| Source attribution | Require the citation source to match the retrieved chunk |
+| Quoted evidence | Require a nonempty, verbatim 1–19 word quote; normalize whitespace |
+| Grounded flag | A response marked grounded must include a citation |
+| Missing context | Abstain without spending a generation call; optionally try the search adapter |
+| Invalid output | Send validation feedback to the model, with a bounded retry budget |
+
+A valid quote can still accompany an incorrect answer. The test `test_valid_quote_does_not_prove_answer_entailment` deliberately demonstrates this limitation. The model's `grounded` flag is self-reported, not an independent fact check.
 
 ## Architecture
 
-```
-vectorstore.py   Chunk, TfidfRetriever -- offline retrieval, no embedding API
-agent.py         RAGCitationAgent      -- generate, validate, score, fall back
-example.py       Runnable demo over a small fictional company knowledge base
-```
+1. `TfidfRetriever` ranks in-memory chunks by lexical similarity.
+2. `RAGCitationAgent` requests a structured answer using an Anthropic tool schema.
+3. Pydantic validates the response, followed by source and quote checks.
+4. Failed checks trigger corrective generation; exhaustion returns an ungrounded response.
+5. A low confidence score may invoke one optional search callback. New evidence goes through the same validation.
 
-### Retrieval (`vectorstore.py`)
+TF-IDF is a reproducible offline baseline. It can miss paraphrases without overlapping words. The store is not persistent, and this repository does not implement embedding search, reranking, or a hosted API.
 
-Uses scikit-learn TF-IDF + cosine similarity instead of a real embedding
-model. This is a deliberate scope cut: it means the whole retrieval half of
-the pipeline runs offline with zero API calls and zero extra credentials,
-which keeps the demo self-contained. It also means retrieval is a **lexical
-overlap** signal, not semantic similarity -- it will miss a chunk that
-answers the question using different words than the query. Swap
-`TfidfRetriever` for a real vector DB (pgvector, Pinecone, Chroma,
-Weaviate...) plus a real embedding model in production; the agent only
-depends on the `retrieve(query, k) -> List[RetrievedChunk]` interface, so
-the swap is contained to one class.
+## Run locally
 
-### Generation + grounding retry (`agent.py`)
-
-`RAGCitationAgent.query()`:
-
-1. Retrieve top-k chunks for the question.
-2. Call Claude with `tool_choice` forced to a `submit_rag_answer` tool whose
-   `input_schema` is generated directly from the `RAGAnswer` Pydantic model
-   (answer, citations, self-reported confidence, grounded flag) -- same
-   forced tool-calling pattern as Project #01.
-3. Validate the response: JSON parse -> Pydantic schema -> grounding check
-   (do all cited `chunk_id`s exist in the retrieved set?). Any failure
-   appends the exact error text to the next prompt and retries, up to
-   `max_retries` (default 2). If every attempt fails, the agent returns a
-   safe `grounded=False, confidence=0.0` answer rather than crashing or
-   silently returning bad data.
-4. Blend a final confidence score from the retrieval score and the model's
-   self-reported confidence (see below).
-5. If confidence is low **and** a `fallback_search_fn` was provided, call it,
-   append whatever it returns as extra context, and regenerate once. This
-   only fires once per query -- it does not loop.
-
-### Confidence heuristic
-
-```
-final_confidence = 0.35 * retrieval_score + 0.65 * self_reported_confidence
-```
-capped at 0.3 if `grounded=False`, and capped at 0.35 if there are no
-citations at all. **This is a heuristic, not a calibrated probability** --
-TF-IDF cosine scores aren't comparable across queries in any rigorous way,
-and a model's self-reported confidence is itself an LLM output, not ground
-truth. Treat `is_low_confidence` as "worth a second look or a fallback,"
-not as a statistically validated uncertainty estimate. A production system
-would want to calibrate this against labeled data (does confidence < 0.45
-actually correlate with wrong answers on your domain?) rather than trust
-the fixed weights above.
-
-### Fallback search
-
-`fallback_search_fn: Callable[[str], List[Chunk]]` is a pluggable seam, not
-a batteries-included web search integration -- `example.py` wires up a
-`mock_web_search_fallback()` that returns canned results for one keyword,
-to keep the demo runnable with no extra API key. Replace it with a real
-call to Tavily, Brave Search, Bing, or your internal search API; the agent
-only needs back a `List[Chunk]`.
-
-## Usage
+Python 3.11 or 3.12:
 
 ```bash
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...
-python example.py
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+pytest -q
+python -m evaluation.run --output evaluation/results.json
 ```
 
-```python
-from agent import RAGCitationAgent
-from vectorstore import TfidfRetriever, simple_chunk_text
+The tests and evaluation require no credentials and make no model calls.
 
-retriever = TfidfRetriever()
-retriever.add_documents(simple_chunk_text(my_document_text, source="handbook.pdf"))
+For the live generation example, set `ANTHROPIC_API_KEY` in your environment and run `python example.py`. Live generation uses the configured model and incurs provider charges. The example's search fallback returns canned data; it is not a web search integration.
 
-agent = RAGCitationAgent(retriever=retriever, fallback_search_fn=my_search_fn)
-result = agent.query("What's our PTO rollover policy?")
+## Reproducible evaluation
 
-print(result.answer.answer)
-print(result.is_low_confidence, result.final_confidence)
-for c in result.answer.citations:
-    print(c.source, c.chunk_id, c.supporting_quote)
-```
+[`evaluation/cases.json`](evaluation/cases.json) contains six fictional policy documents, twelve answerable queries (including paraphrases), and two unanswerable queries. [`evaluation/results.json`](evaluation/results.json) records:
 
-## Out of scope (available on request, same as Project #01)
+- Recall@3 and MRR@3 over answerable queries.
+- Empty retrieval rate on the two unanswerable queries, not end-to-end abstention accuracy.
+- Citation checks for invented IDs, wrong sources, fabricated quotes, and missing citations.
+- A counterexample where a false answer passes the structural checks using a real quote.
 
-- Async/batch querying across many questions at once
-- Exponential backoff / rate-limit handling on the Anthropic API calls
-- A formal test suite (the logic above was checked with mocked-client
-  scripts during development, but nothing is committed as `pytest` tests)
-- A real embedding-based retriever or real search API integration
-- Persisting the document store (everything is in-memory per process)
-- Multi-turn conversational RAG (each `query()` call is independent; no
-  chat history is threaded through)
+The corpus is a hand-authored smoke benchmark, not a representative quality estimate. CI runs tests and publishes the evaluation JSON for Python 3.11 and 3.12.
+
+## Confidence and failure boundaries
+
+`0.35 * retrieval_score + 0.65 * self_reported_confidence` is an uncalibrated heuristic. Scores are capped for ungrounded or uncited responses. A high score does not prove accuracy. A low score is a signal for review or fallback.
+
+Provider transport errors and search-adapter exceptions propagate to the caller. The retry budget handles malformed/invalid answers, not availability failures. Callers must supply timeout and service-level error handling. Attempt records contain raw model outputs; do not persist them without a data-handling policy. Treat retrieved text as untrusted: the prompt discourages following document instructions, but this is not a prompt-injection defense guarantee.
+
+## Next engineering milestones
+
+- Compare TF-IDF with dense and hybrid retrieval on a larger labeled corpus.
+- Evaluate claim-to-evidence entailment separately from quote integrity.
+- Calibrate abstention thresholds; report false acceptance and false rejection.
+- Measure live-model latency, token usage, and cost before making deployment claims.

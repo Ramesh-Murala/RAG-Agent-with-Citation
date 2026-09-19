@@ -1,0 +1,26 @@
+{
+  "documents": [
+    {"id": "leave", "source": "handbook", "text": "Employees receive 20 days of paid leave each year. Unused leave expires in December."},
+    {"id": "password", "source": "it-guide", "text": "Reset your password through the IT portal. Multi-factor authentication is required."},
+    {"id": "expense", "source": "finance-guide", "text": "Submit expense receipts within 30 days. Your manager must approve reimbursement."},
+    {"id": "remote", "source": "handbook", "text": "Remote work is permitted on Tuesday and Thursday with manager approval."},
+    {"id": "incident", "source": "on-call", "text": "Report security incidents immediately to the security team. Do not delete logs."},
+    {"id": "retention", "source": "data-policy", "text": "Application logs are retained for 90 days. Customer exports expire after seven days."}
+  ],
+  "queries": [
+    {"query": "How many days of paid leave?", "relevant": ["leave"]},
+    {"query": "When does unused leave expire?", "relevant": ["leave"]},
+    {"query": "How do I reset my password?", "relevant": ["password"]},
+    {"query": "Is multi-factor authentication required?", "relevant": ["password"]},
+    {"query": "When should I submit expense receipts?", "relevant": ["expense"]},
+    {"query": "Who approves reimbursement?", "relevant": ["expense"]},
+    {"query": "Which days permit remote work?", "relevant": ["remote"]},
+    {"query": "Where do I report security incidents?", "relevant": ["incident"]},
+    {"query": "How long are application logs retained?", "relevant": ["retention"]},
+    {"query": "When do customer exports expire?", "relevant": ["retention"]},
+    {"query": "Can I telecommute?", "relevant": ["remote"]},
+    {"query": "Who authorizes repayment?", "relevant": ["expense"]},
+    {"query": "spaceship propulsion", "relevant": []},
+    {"query": "What is the employee salary policy?", "relevant": []}
+  ]
+}
