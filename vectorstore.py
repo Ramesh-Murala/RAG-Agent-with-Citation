@@ -42,6 +42,8 @@ def simple_chunk_text(
     metadata: Optional[dict] = None,
 ) -> List[Chunk]:
     """Split text into overlapping chunks, preferring sentence boundaries."""
+    if chunk_size <= 0 or not 0 <= overlap < chunk_size:
+        raise ValueError("Require chunk_size > 0 and 0 <= overlap < chunk_size")
     metadata = metadata or {}
     text = re.sub(r"\s+", " ", text).strip()
     chunks: List[Chunk] = []
@@ -75,8 +77,14 @@ class TfidfRetriever:
         self.chunks: List[Chunk] = []
 
     def add_documents(self, chunks: List[Chunk]) -> None:
-        self.chunks.extend(chunks)
-        self._reindex()
+        candidate = self.chunks + chunks
+        if len({c.id for c in candidate}) != len(candidate):
+            raise ValueError("Chunk IDs must be unique")
+        if any(not c.text.strip() for c in candidate):
+            raise ValueError("Chunks must contain text")
+        vectorizer = TfidfVectorizer(stop_words="english")
+        matrix = vectorizer.fit_transform([c.text for c in candidate]) if candidate else None
+        self.chunks, self._vectorizer, self._matrix = candidate, vectorizer, matrix
 
     def _reindex(self) -> None:
         if not self.chunks:
@@ -86,6 +94,8 @@ class TfidfRetriever:
         self._matrix = self._vectorizer.fit_transform(texts)
 
     def retrieve(self, query: str, k: int = 4) -> List[RetrievedChunk]:
+        if k < 1:
+            raise ValueError("k must be positive")
         if not self.chunks or self._matrix is None:
             return []
         query_vec = self._vectorizer.transform([query])

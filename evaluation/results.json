@@ -1,0 +1,206 @@
+{
+  "mode": "offline_fixture_no_llm",
+  "corpus_documents": 6,
+  "answerable_queries": 12,
+  "unanswerable_queries": 2,
+  "recall_at_3": 0.8333,
+  "mrr_at_3": 0.8333,
+  "empty_retrieval_rate_on_unanswerable": 1.0,
+  "queries": [
+    {
+      "query": "How many days of paid leave?",
+      "relevant": [
+        "leave"
+      ],
+      "retrieved": [
+        "leave",
+        "retention",
+        "expense"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "When does unused leave expire?",
+      "relevant": [
+        "leave"
+      ],
+      "retrieved": [
+        "leave",
+        "retention"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "How do I reset my password?",
+      "relevant": [
+        "password"
+      ],
+      "retrieved": [
+        "password"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "Is multi-factor authentication required?",
+      "relevant": [
+        "password"
+      ],
+      "retrieved": [
+        "password"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "When should I submit expense receipts?",
+      "relevant": [
+        "expense"
+      ],
+      "retrieved": [
+        "expense"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "Who approves reimbursement?",
+      "relevant": [
+        "expense"
+      ],
+      "retrieved": [
+        "expense"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "Which days permit remote work?",
+      "relevant": [
+        "remote"
+      ],
+      "retrieved": [
+        "remote",
+        "retention",
+        "expense"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "Where do I report security incidents?",
+      "relevant": [
+        "incident"
+      ],
+      "retrieved": [
+        "incident"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "How long are application logs retained?",
+      "relevant": [
+        "retention"
+      ],
+      "retrieved": [
+        "retention",
+        "incident"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "When do customer exports expire?",
+      "relevant": [
+        "retention"
+      ],
+      "retrieved": [
+        "retention"
+      ],
+      "recall_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "empty_retrieval": false
+    },
+    {
+      "query": "Can I telecommute?",
+      "relevant": [
+        "remote"
+      ],
+      "retrieved": [],
+      "recall_at_3": 0.0,
+      "reciprocal_rank": 0,
+      "empty_retrieval": true
+    },
+    {
+      "query": "Who authorizes repayment?",
+      "relevant": [
+        "expense"
+      ],
+      "retrieved": [],
+      "recall_at_3": 0.0,
+      "reciprocal_rank": 0,
+      "empty_retrieval": true
+    },
+    {
+      "query": "spaceship propulsion",
+      "relevant": [],
+      "retrieved": [],
+      "recall_at_3": null,
+      "reciprocal_rank": 0,
+      "empty_retrieval": true
+    },
+    {
+      "query": "What is the employee salary policy?",
+      "relevant": [],
+      "retrieved": [],
+      "recall_at_3": null,
+      "reciprocal_rank": 0,
+      "empty_retrieval": true
+    }
+  ],
+  "citation_checks": [
+    {
+      "case": "valid_evidence",
+      "accepted": true,
+      "expected": true
+    },
+    {
+      "case": "invented_chunk",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "wrong_source",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "fabricated_quote",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "missing_citations",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "wrong_answer_with_real_quote",
+      "accepted": true,
+      "expected": true
+    }
+  ],
+  "limitation": "Hand-authored tiny corpus; no generation-quality, scale, cost, or semantic-entailment claim. A real quote can accompany a false answer."
+}
