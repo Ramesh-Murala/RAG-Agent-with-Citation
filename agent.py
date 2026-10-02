@@ -124,7 +124,13 @@ class RAGCitationAgent:
 
         if is_low and self.fallback_search_fn is not None:
             logger.info("Low confidence (%.2f) for %r -- invoking fallback search", final_confidence, question)
-            fallback_chunks = self.fallback_search_fn(question)
+            try:
+                fallback_chunks = self.fallback_search_fn(question)
+            except Exception:
+                # An optional enrichment service must not discard the safe,
+                # already-computed result when it is unavailable.
+                logger.exception("Fallback search failed for %r", question)
+                fallback_chunks = []
             if fallback_chunks:
                 used_fallback = True
                 combined = retrieved + [RetrievedChunk(chunk=c, score=0.0) for c in fallback_chunks]

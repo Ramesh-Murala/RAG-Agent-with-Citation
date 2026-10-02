@@ -83,6 +83,20 @@ def test_fallback_runs_once_and_validates_new_sources():
     assert len(calls) == len(client.calls) == 1
 
 
+def test_fallback_failure_preserves_safe_low_confidence_result(caplog):
+    def unavailable(_query):
+        raise TimeoutError("search timed out")
+
+    agent, client = make_agent([], fallback_search_fn=unavailable)
+    result = agent.query("spaceships")
+
+    assert not result.used_fallback
+    assert result.is_low_confidence
+    assert not result.answer.grounded
+    assert not client.calls
+    assert "Fallback search failed" in caplog.text
+
+
 def test_valid_quote_does_not_prove_answer_entailment():
     # Deliberate counterexample: this structural checker cannot catch a wrong
     # answer accompanied by a real, but contradictory, quotation.
