@@ -25,7 +25,12 @@ class FakeClient:
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=next(self.outputs))])
+        output = next(self.outputs)
+        if isinstance(output, Exception):
+            raise output
+        if output is None:
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Unstructured response")])
+        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=output)])
 
 
 def make_agent(outputs, **kwargs):
@@ -53,6 +58,33 @@ def test_retry_uses_validation_feedback():
     assert result.answer.grounded
     assert len(result.attempts) == 2
     assert "must include at least one citation" in client.calls[1]["messages"][0]["content"]
+
+
+def test_missing_tool_call_is_retried_with_feedback():
+    agent, client = make_agent([None, answer()])
+    result = agent.query("paid leave")
+
+    assert result.answer.grounded
+    assert len(result.attempts) == 2
+    assert "required answer tool call" in result.attempts[0].error
+    assert "required answer tool call" in client.calls[1]["messages"][0]["content"]
+
+
+def test_missing_tool_call_exhaustion_abstains():
+    agent, client = make_agent([None, None], max_retries=1)
+    result = agent.query("paid leave")
+
+    assert not result.answer.grounded
+    assert result.final_confidence <= 0.3
+    assert len(result.attempts) == len(client.calls) == 2
+
+
+def test_provider_error_is_not_retried():
+    agent, client = make_agent([TimeoutError("provider unavailable")])
+
+    with pytest.raises(TimeoutError, match="provider unavailable"):
+        agent.query("paid leave")
+    assert len(client.calls) == 1
 
 
 def test_exhaustion_abstains():

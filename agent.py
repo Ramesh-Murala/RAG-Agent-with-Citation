@@ -79,6 +79,10 @@ class GroundingError(Exception):
     """Raised when citation provenance or quoted evidence is invalid."""
 
 
+class ResponseFormatError(Exception):
+    """Raised when the model omits the required structured answer tool call."""
+
+
 # --------------------------------------------------------------------------
 # Agent
 # --------------------------------------------------------------------------
@@ -176,14 +180,15 @@ class RAGCitationAgent:
         error_feedback = ""
 
         for attempt_num in range(1, self.max_retries + 2):  # first try + retries
-            raw = self._call_llm(question, context_block, error_feedback)
+            raw = ""
             try:
+                raw = self._call_llm(question, context_block, error_feedback)
                 data = json.loads(raw)
                 candidate = RAGAnswer.model_validate(data)
                 self._check_grounding(candidate, evidence)
                 attempts.append(AttemptRecord(attempt=attempt_num, raw_output=raw))
                 return candidate, attempts
-            except (json.JSONDecodeError, ValidationError, GroundingError) as exc:
+            except (json.JSONDecodeError, ValidationError, GroundingError, ResponseFormatError) as exc:
                 error_text = str(exc)
                 logger.info("Attempt %d failed validation: %s", attempt_num, error_text)
                 attempts.append(AttemptRecord(attempt=attempt_num, raw_output=raw, error=error_text))
@@ -254,7 +259,7 @@ class RAGCitationAgent:
         for block in response.content:
             if block.type == "tool_use":
                 return json.dumps(block.input)
-        raise RuntimeError("Model did not return a tool_use block despite forced tool_choice")
+        raise ResponseFormatError("Model did not return the required answer tool call")
 
     # ---- confidence heuristic --------------------------------------------
 
