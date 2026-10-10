@@ -143,7 +143,7 @@ The corpus is a hand-authored smoke benchmark, not a representative quality esti
 
 `0.35 * retrieval_score + 0.65 * self_reported_confidence` is an uncalibrated heuristic. Scores are capped for ungrounded or uncited responses. A high score does not prove accuracy. A low score is a signal for review or fallback.
 
-Provider transport errors and search-adapter exceptions propagate to the caller. The retry budget handles malformed/invalid answers, not availability failures. Callers must supply timeout and service-level error handling. Attempt records contain raw model outputs; do not persist them without a data-handling policy. Treat retrieved text as untrusted: the prompt discourages following document instructions, but this is not a prompt-injection defense guarantee.
+Provider transport errors propagate to the caller. Search-adapter exceptions are logged and preserve the existing safe, low-confidence result. The retry budget handles malformed or invalid answers, including responses that omit the required answer tool call; it does not handle provider availability failures. Callers must supply timeout and service-level error handling. Attempt records contain raw model outputs; do not persist them without a data-handling policy. Treat retrieved text as untrusted: the prompt discourages following document instructions, but this is not a prompt-injection defense guarantee.
 
 ## Next engineering milestones
 
