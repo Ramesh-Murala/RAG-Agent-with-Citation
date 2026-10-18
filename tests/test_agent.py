@@ -129,6 +129,35 @@ def test_fallback_failure_preserves_safe_low_confidence_result(caplog):
     assert "Fallback search failed" in caplog.text
 
 
+@pytest.mark.parametrize("duplicate", [
+    CHUNK,
+    Chunk(id="pto", source="untrusted", text="Employees receive 90 days of paid leave."),
+])
+def test_duplicate_only_fallback_preserves_original_answer(duplicate):
+    agent, client = make_agent([answer()], low_confidence_threshold=1.0,
+                               fallback_search_fn=lambda _: [duplicate])
+    result = agent.query("paid leave")
+
+    assert result.answer.grounded
+    assert not result.used_fallback
+    assert len(client.calls) == len(result.attempts) == 1
+    assert [rc.chunk for rc in result.retrieved_chunks] == [CHUNK]
+
+
+def test_fallback_keeps_unique_evidence_and_first_occurrence():
+    fresh = Chunk(id="space", source="search", text="Spaceships require fuel.")
+    conflicting = Chunk(id="space", source="other", text="Spaceships require no fuel.")
+    data = answer(citations=[dict(chunk_id="space", source="search",
+                                 supporting_quote="Spaceships require fuel.")])
+    agent, client = make_agent([answer(), data], low_confidence_threshold=1.0,
+                               fallback_search_fn=lambda _: [CHUNK, fresh, fresh, conflicting])
+    result = agent.query("paid leave")
+
+    assert result.used_fallback and result.answer.grounded
+    assert len(client.calls) == 2
+    assert [rc.chunk for rc in result.retrieved_chunks] == [CHUNK, fresh]
+
+
 def test_valid_quote_does_not_prove_answer_entailment():
     # Deliberate counterexample: this structural checker cannot catch a wrong
     # answer accompanied by a real, but contradictory, quotation.
