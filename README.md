@@ -108,7 +108,7 @@ A valid quote can still accompany an incorrect answer. The test `test_valid_quot
 2. `RAGCitationAgent` requests a structured answer using an Anthropic tool schema.
 3. Pydantic validates the response, followed by source and quote checks.
 4. Failed checks trigger corrective generation; exhaustion returns an ungrounded response.
-5. A low confidence score may invoke one optional search callback. New evidence goes through the same validation.
+5. A low confidence score may invoke one optional search callback. Duplicate chunk IDs are skipped: existing retrieval wins, then the first fallback occurrence. Only new IDs trigger another generation call, and new evidence goes through the same validation.
 
 TF-IDF is a reproducible offline baseline. It can miss paraphrases without overlapping words. The store is not persistent, and this repository does not implement embedding search, reranking, or a hosted API.
 

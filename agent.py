@@ -135,6 +135,18 @@ class RAGCitationAgent:
                 # already-computed result when it is unavailable.
                 logger.exception("Fallback search failed for %r", question)
                 fallback_chunks = []
+            # Search may rediscover retrieved documents or repeat its own
+            # results. Keep the first chunk for each ID so fallback content
+            # cannot replace evidence already used by the initial answer.
+            seen_ids = {rc.chunk.id for rc in retrieved}
+            unique_fallback = []
+            for chunk in fallback_chunks or []:
+                if chunk.id in seen_ids:
+                    logger.warning("Skipping fallback chunk with duplicate ID")
+                    continue
+                seen_ids.add(chunk.id)
+                unique_fallback.append(chunk)
+            fallback_chunks = unique_fallback
             if fallback_chunks:
                 used_fallback = True
                 combined = retrieved + [RetrievedChunk(chunk=c, score=0.0) for c in fallback_chunks]
