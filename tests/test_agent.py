@@ -45,6 +45,9 @@ def make_agent(outputs, **kwargs):
     dict(chunk_id="pto", source="invented", supporting_quote="20 days"),
     dict(chunk_id="pto", source="handbook", supporting_quote="90 days"),
     dict(chunk_id="pto", source="handbook", supporting_quote="   "),
+    dict(chunk_id="pto", source="handbook", supporting_quote="0 days of paid"),
+    dict(chunk_id="pto", source="handbook", supporting_quote="days of paid lea"),
+    dict(chunk_id="pto", source="handbook", supporting_quote="."),
 ])
 def test_rejects_invalid_evidence(citation):
     agent, _ = make_agent([])

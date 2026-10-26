@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
@@ -233,9 +234,15 @@ class RAGCitationAgent:
             if citation.source != chunk.source:
                 raise GroundingError(f"Source does not match chunk_id: {citation.chunk_id}")
             quote = " ".join(citation.supporting_quote.split())
-            if not quote or len(quote.split()) >= 20:
-                raise GroundingError("supporting_quote must contain between 1 and 19 words")
-            if quote not in " ".join(chunk.text.split()):
+            if not quote or len(quote.split()) >= 20 or not any(char.isalnum() for char in quote):
+                raise GroundingError(
+                    "supporting_quote must contain 1 to 19 words and an alphanumeric character"
+                )
+            normalized_text = " ".join(chunk.text.split())
+            # Raw substring matching accepts fragments inside words, such as
+            # "0 days" from "20 days" or "lea" from "leave". Require the
+            # quote to align with complete Unicode word boundaries.
+            if re.search(rf"(?<!\w){re.escape(quote)}(?!\w)", normalized_text) is None:
                 raise GroundingError(f"Quote is not present in chunk_id: {citation.chunk_id}")
 
     # ---- LLM call --------------------------------------------------------

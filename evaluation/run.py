@@ -31,6 +31,9 @@ def evaluate():
         ("invented_chunk", {**base, "citations": [dict(chunk_id="missing", source="handbook", supporting_quote="20 days")]}, False),
         ("wrong_source", {**base, "citations": [dict(chunk_id="leave", source="elsewhere", supporting_quote="20 days")]}, False),
         ("fabricated_quote", {**base, "citations": [dict(chunk_id="leave", source="handbook", supporting_quote="90 days")]}, False),
+        ("partial_start_token", {**base, "citations": [dict(chunk_id="leave", source="handbook", supporting_quote="0 days of paid")]}, False),
+        ("partial_end_token", {**base, "citations": [dict(chunk_id="leave", source="handbook", supporting_quote="days of paid lea")]}, False),
+        ("punctuation_only_quote", {**base, "citations": [dict(chunk_id="leave", source="handbook", supporting_quote=".")]}, False),
         ("missing_citations", {**base, "citations": []}, False),
         ("wrong_answer_with_real_quote", {**base, "answer": "Employees receive 90 days of leave."}, True),
     ]
