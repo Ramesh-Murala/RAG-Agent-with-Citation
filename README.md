@@ -6,7 +6,7 @@
 
 A Python RAG agent that rejects citations the retrieved context does not support, verifies quoted evidence word for word, retries invalid responses, and abstains when nothing relevant is retrieved.
 
-**Measured on the included fixture:** Recall@3 0.83, MRR@3 0.83, 2/2 empty retrievals on unanswerable queries, 6/6 citation-integrity cases behaving as specified. Reproducible with a single command, no API key and no model calls.
+**Measured on the included fixture:** Recall@3 0.83, MRR@3 0.83, 2/2 empty retrievals on unanswerable queries, 9/9 citation-integrity cases behaving as specified. Reproducible with a single command, no API key and no model calls.
 
 **Scope:** a small, inspectable reliability experiment on a hand-authored corpus. It does not establish that every generated claim is true, and has not been validated at production scale; the limits are documented under Confidence and failure boundaries.
 
@@ -44,7 +44,7 @@ This GIF renders actual captured JSON as an animated transcript; it is not a scr
 | Recall@3 | 0.8333 |
 | MRR@3 | 0.8333 |
 | Empty retrieval on unanswerable queries | 2/2 |
-| Citation-check cases matching expected behavior | 6/6 |
+| Citation-check cases matching expected behavior | 9/9 |
 
 [Recorded evaluation](evaluation/results.json). A tiny hand-authored fixture, not a production quality estimate. Two paraphrases are missed. One test explicitly shows a false answer passing with a real quote.
 
@@ -95,7 +95,7 @@ The renderer needs DejaVu Sans Mono (on Debian/Ubuntu: `fonts-dejavu-core`). [Ca
 |---|---|
 | Retrieved chunk ID | Reject citations to chunks outside the current context |
 | Source attribution | Require the citation source to match the retrieved chunk |
-| Quoted evidence | Require a nonempty, verbatim 1–19 word quote; normalize whitespace |
+| Quoted evidence | Require a meaningful, verbatim 1–19 word quote aligned to complete word boundaries; normalize whitespace |
 | Grounded flag | A response marked grounded must include a citation |
 | Missing context | Abstain without spending a generation call; optionally try the search adapter |
 | Invalid output | Send validation feedback to the model, with a bounded retry budget |

@@ -192,6 +192,21 @@
       "expected": false
     },
     {
+      "case": "partial_start_token",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "partial_end_token",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "punctuation_only_quote",
+      "accepted": false,
+      "expected": false
+    },
+    {
       "case": "missing_citations",
       "accepted": false,
       "expected": false
