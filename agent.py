@@ -150,14 +150,30 @@ class RAGCitationAgent:
             fallback_chunks = unique_fallback
             if fallback_chunks:
                 used_fallback = True
+                previous_answer = answer
+                previous_confidence = final_confidence
                 combined = retrieved + [RetrievedChunk(chunk=c, score=0.0) for c in fallback_chunks]
-                answer, retry_attempts = self._generate_grounded_answer(question, combined)
+                candidate, retry_attempts = self._generate_grounded_answer(question, combined)
                 attempts.extend(retry_attempts)
                 retrieved = combined
                 # retrieval_confidence intentionally NOT recomputed from fallback:
                 # it's a different source type (e.g. live web), scored 0.0 by
                 # convention so it never inflates the TF-IDF-based signal.
-                final_confidence = self._combine_confidence(retrieval_confidence, answer)
+                candidate_confidence = self._combine_confidence(retrieval_confidence, candidate)
+                # Optional enrichment must not discard an answer that already
+                # passed grounding checks. A fallback model may abstain or
+                # exhaust validation retries even when the initial evidence
+                # supported a valid answer.
+                if previous_answer.grounded and not candidate.grounded:
+                    logger.warning(
+                        "Fallback did not produce a grounded answer for %r; preserving initial answer",
+                        question,
+                    )
+                    answer = previous_answer
+                    final_confidence = previous_confidence
+                else:
+                    answer = candidate
+                    final_confidence = candidate_confidence
                 is_low = self._is_low_confidence(final_confidence, answer, retrieved)
 
         if is_low:

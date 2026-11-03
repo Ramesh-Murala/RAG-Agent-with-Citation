@@ -161,6 +161,26 @@ def test_fallback_keeps_unique_evidence_and_first_occurrence():
     assert [rc.chunk for rc in result.retrieved_chunks] == [CHUNK, fresh]
 
 
+def test_fallback_abstention_cannot_replace_grounded_answer(caplog):
+    fresh = Chunk(id="space", source="search", text="Spaceships require fuel.")
+    invalid = answer(citations=[])
+    agent, client = make_agent(
+        [answer(), invalid, invalid],
+        low_confidence_threshold=1.0,
+        max_retries=1,
+        fallback_search_fn=lambda _: [fresh],
+    )
+
+    result = agent.query("paid leave")
+
+    assert result.used_fallback
+    assert result.answer.grounded
+    assert result.answer.answer == answer()["answer"]
+    assert len(client.calls) == len(result.attempts) == 3
+    assert [rc.chunk for rc in result.retrieved_chunks] == [CHUNK, fresh]
+    assert "preserving initial answer" in caplog.text
+
+
 def test_valid_quote_does_not_prove_answer_entailment():
     # Deliberate counterexample: this structural checker cannot catch a wrong
     # answer accompanied by a real, but contradictory, quotation.

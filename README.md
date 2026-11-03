@@ -108,7 +108,7 @@ A valid quote can still accompany an incorrect answer. The test `test_valid_quot
 2. `RAGCitationAgent` requests a structured answer using an Anthropic tool schema.
 3. Pydantic validates the response, followed by source and quote checks.
 4. Failed checks trigger corrective generation; exhaustion returns an ungrounded response.
-5. A low confidence score may invoke one optional search callback. Duplicate chunk IDs are skipped: existing retrieval wins, then the first fallback occurrence. Only new IDs trigger another generation call, and new evidence goes through the same validation.
+5. A low confidence score may invoke one optional search callback. Duplicate chunk IDs are skipped: existing retrieval wins, then the first fallback occurrence. Only new IDs trigger another generation call, and new evidence goes through the same validation. If fallback generation abstains or exhausts validation retries, an already grounded initial answer is preserved.
 
 TF-IDF is a reproducible offline baseline. It can miss paraphrases without overlapping words. The store is not persistent, and this repository does not implement embedding search, reranking, or a hosted API.
 
@@ -143,7 +143,7 @@ The corpus is a hand-authored smoke benchmark, not a representative quality esti
 
 `0.35 * retrieval_score + 0.65 * self_reported_confidence` is an uncalibrated heuristic. Scores are capped for ungrounded or uncited responses. A high score does not prove accuracy. A low score is a signal for review or fallback.
 
-Provider transport errors propagate to the caller. Search-adapter exceptions are logged and preserve the existing safe, low-confidence result. The retry budget handles malformed or invalid answers, including responses that omit the required answer tool call; it does not handle provider availability failures. Callers must supply timeout and service-level error handling. Attempt records contain raw model outputs; do not persist them without a data-handling policy. Treat retrieved text as untrusted: the prompt discourages following document instructions, but this is not a prompt-injection defense guarantee.
+Provider transport errors propagate to the caller. Search-adapter exceptions are logged and preserve the existing safe, low-confidence result. Fallback enrichment also cannot replace an already grounded answer with an abstention. The retry budget handles malformed or invalid answers, including responses that omit the required answer tool call; it does not handle provider availability failures. Callers must supply timeout and service-level error handling. Attempt records contain raw model outputs; do not persist them without a data-handling policy. Treat retrieved text as untrusted: the prompt discourages following document instructions, but this is not a prompt-injection defense guarantee.
 
 ## Next engineering milestones
 
