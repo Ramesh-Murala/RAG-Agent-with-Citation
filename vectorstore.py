@@ -100,7 +100,8 @@ class TfidfRetriever:
             return []
         query_vec = self._vectorizer.transform([query])
         scores = cosine_similarity(query_vec, self._matrix)[0]
-        ranked_idx = np.argsort(scores)[::-1][:k]
+        # Keep ingestion order for equal scores, including at the top-k cutoff.
+        ranked_idx = np.argsort(-scores, kind="stable")[:k]
         return [
             RetrievedChunk(chunk=self.chunks[i], score=float(scores[i]))
             for i in ranked_idx
