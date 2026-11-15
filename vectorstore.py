@@ -52,7 +52,8 @@ def simple_chunk_text(
         end = min(start + chunk_size, len(text))
         if end < len(text):
             boundary = text.rfind(". ", start, end)
-            if boundary != -1 and boundary > start + chunk_size // 2:
+            # A sentence cut must leave room for the requested overlap.
+            if boundary > start + chunk_size // 2 and boundary + 1 - start > overlap:
                 end = boundary + 1
         piece = text[start:end].strip()
         if piece:
