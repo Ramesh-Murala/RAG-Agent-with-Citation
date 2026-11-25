@@ -1,4 +1,22 @@
+import pytest
+
 from vectorstore import Chunk, TfidfRetriever, simple_chunk_text
+
+
+def test_failed_index_update_preserves_existing_retrieval():
+    retriever = TfidfRetriever()
+    retriever.add_documents([Chunk(id="policy", text="refund policy", source="handbook")])
+    before = retriever.retrieve("refund")
+
+    with pytest.raises(ValueError, match="Chunks must contain text"):
+        retriever.add_documents([Chunk(id="blank", text="  ", source="upload")])
+
+    after = retriever.retrieve("refund")
+    assert [(hit.chunk.id, hit.score) for hit in after] == [
+        (hit.chunk.id, hit.score) for hit in before
+    ]
+    retriever.add_documents([Chunk(id="shipping", text="shipping policy", source="faq")])
+    assert retriever.retrieve("shipping")[0].chunk.id == "shipping"
 
 
 def test_sentence_cut_does_not_shrink_chunk_below_requested_overlap():
